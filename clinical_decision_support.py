@@ -295,6 +295,9 @@ class ClinicalDecisionSupport:
         """
         explainability = self.generate_explainability_report(triage_result, patient_data)
         
+        # 'generate_explainability_report' stores rules under 'triggered_clinical_rules'
+        triggered = explainability.get('triggered_clinical_rules', explainability.get('triggered_rules', []))
+
         report = {
             'report_type': 'Clinical Decision Support Report',
             'generated_at': datetime.now().isoformat(),
@@ -311,8 +314,8 @@ class ClinicalDecisionSupport:
                 'temperature': explainability['decision_factors']['fever_temperature']
             },
             'decision_support': {
-                'triggered_rules': len(explainability['triggered_rules']),
-                'rules': explainability['triggered_rules'],
+                'triggered_rules': len(triggered),
+                'rules': triggered,
                 'evidence': explainability['evidence_summary'],
                 'guidelines': explainability['guideline_references']
             },
