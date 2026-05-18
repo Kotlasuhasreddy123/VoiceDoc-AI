@@ -1,0 +1,46 @@
+# VoiceDoc AI - Requirements
+
+# Core ML
+scikit-learn>=1.3.0
+numpy>=1.24.0
+pandas>=2.0.0
+
+# Gemma 4 Integration (optional - for full functionality)
+transformers>=4.40.0
+torch>=2.0.0
+accelerate>=0.24.0
+
+# Audio Processing (for voice biomarker analysis)
+librosa>=0.10.0
+soundfile>=0.12.0
+scipy>=1.10.0
+
+# Image Processing
+Pillow>=10.0.0
+
+# RAG & Knowledge Base
+langchain>=0.1.0
+chromadb>=0.4.0
+sentence-transformers>=2.2.0
+
+# Model Optimization
+onnxruntime>=1.16.0
+onnx>=1.14.0
+
+# Fine-tuning (LoRA/QLoRA)
+peft>=0.4.0
+bitsandbytes>=0.41.0
+
+# Utilities
+python-dotenv>=1.0.0
+requests>=2.31.0
+tqdm>=4.65.0
+
+# For Ollama deployment (optional)
+# ollama>=0.1.0
+
+# For LiteRT deployment (optional)
+# mediapipe>=0.10.0
+
+# For Unsloth fine-tuning (optional)
+# unsloth>=2024.1
