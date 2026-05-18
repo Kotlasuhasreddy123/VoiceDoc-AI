@@ -74,18 +74,49 @@ class MedicalTriageEngine:
         Extract symptoms from user input using cosine similarity.
         Similar to Axiom's evidence chain matching.
         """
-        text_vector = self.vectorizer.transform([text.lower()])
+        text_lower = text.lower()
+
+        # Direct keyword override for critical/high-risk symptoms
+        # This ensures severe symptoms are never missed by the vectorizer
+        critical_keywords = {
+            'chest pain': ['chest pain', 'chest ache', 'chest pressure', 'chest tightness'],
+            'shortness of breath': ['shortness of breath', 'difficulty breathing',
+                                    'hard to breathe', 'cant breathe', "can't breathe",
+                                    'trouble breathing', 'breathing difficulty'],
+            'loss of consciousness': ['unconscious', 'fainted', 'passed out', 'loss of consciousness'],
+            'severe headache': ['severe headache', 'worst headache', 'thunderclap headache'],
+            'severe abdominal pain': ['severe abdominal', 'severe stomach', 'severe belly'],
+            'deep wound': ['deep cut', 'deep wound', 'deep laceration', 'deep gash'],
+            'severe burn': ['severe burn', 'third degree', 'third-degree'],
+            'confusion': ['confused', 'confusion', 'disoriented', 'not making sense'],
+        }
+
+        forced = []
+        for symptom, keywords in critical_keywords.items():
+            if any(kw in text_lower for kw in keywords):
+                forced.append((symptom, 0.95))
+
+        # Vectorizer-based matching for remaining symptoms
+        text_vector = self.vectorizer.transform([text_lower])
         similarities = cosine_similarity(text_vector, self.symptom_vectors)[0]
-        
+
         symptoms = list(self.symptom_database.keys())
         matched_symptoms = []
-        
+
+        forced_names = {s[0] for s in forced}
         for symptom, similarity in zip(symptoms, similarities):
-            if similarity > 0.3:  # Threshold for match
+            if symptom in forced_names:
+                continue  # already captured via keyword override
+            # Exclude "severe X" / "deep X" variants unless those words appear in input
+            if symptom.startswith('severe ') and 'severe' not in text_lower:
+                continue
+            if symptom.startswith('deep ') and 'deep' not in text_lower:
+                continue
+            if similarity > 0.35:  # slightly tighter threshold
                 matched_symptoms.append((symptom, float(similarity)))
-        
-        # Sort by similarity score
-        matched_symptoms.sort(key=lambda x: x[1], reverse=True)
+
+        # Merge: forced symptoms first (highest priority), then vectorizer matches
+        matched_symptoms = forced + sorted(matched_symptoms, key=lambda x: x[1], reverse=True)
         return matched_symptoms
     
     def calculate_risk_score(self, symptoms: List[Tuple[str, float]], 
@@ -120,12 +151,13 @@ class MedicalTriageEngine:
         risk_score = base_risk * duration_multiplier * fever_multiplier * symptom_multiplier
         risk_score = min(risk_score, 100)  # Cap at 100
         
-        # Determine triage level
-        triage_level = 'green'
-        for level, (min_risk, max_risk) in self.risk_thresholds.items():
-            if min_risk <= risk_score < max_risk:
-                triage_level = level
-                break
+        # Determine triage level — use >= 70 for red so score of 100 is always red
+        if risk_score >= 70:
+            triage_level = 'red'
+        elif risk_score >= 40:
+            triage_level = 'yellow'
+        else:
+            triage_level = 'green'
         
         # Confidence based on primary symptom match
         confidence = primary_confidence
@@ -231,6 +263,8 @@ class MedicalTriageEngine:
             'risk_assessment': {
                 'risk_score': risk_analysis['risk_score'],
                 'triage_level': risk_analysis['triage_level'],
+                'confidence': risk_analysis['confidence'],
+                'primary_symptom': risk_analysis.get('primary_symptom', 'unknown'),
                 'reasoning': risk_analysis['reasoning']
             },
             'recommendations': recommendations,
